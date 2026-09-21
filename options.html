@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cài đặt Provider — ViEn Translate</title>
+<link rel="stylesheet" href="css/options.css" />
+</head>
+<body>
+<div class="container">
+  <h1>⚙ Cài đặt Provider AI</h1>
+  <p class="subtitle">Tương thích OpenAI API (<code>/chat/completions</code>). Dùng được OpenAI, OpenRouter, Together, Groq, Ollama, LM Studio, vLLM...</p>
+
+  <div class="card">
+    <label>Base URL <span class="hint">VD: https://api.openai.com/v1 — Ollama local: http://localhost:11434/v1</span></label>
+    <input id="baseUrl" placeholder="https://api.openai.com/v1" />
+
+    <label>API Key</label>
+    <div class="key-row">
+      <input id="apiKey" type="password" placeholder="sk-..." />
+      <button id="toggleKey" type="button">👁</button>
+    </div>
+
+    <label>Model <span class="hint">VD: gpt-4o-mini, llama-3.1-8b, qwen2.5...</span></label>
+    <div class="key-row">
+      <input id="model" placeholder="gpt-4o-mini" list="modelList" />
+      <button id="fetchModels" type="button" title="Lấy danh sách models từ Base URL">📥</button>
+    </div>
+    <datalist id="modelList"></datalist>
+
+    <div class="grid2">
+      <div>
+        <label>Ngôn ngữ mặc định</label>
+        <select id="defaultPair">
+          <option value="auto">🔄 Tự động (Vi ⇄ En)</option>
+          <option value="vi-en">Việt → Anh</option>
+          <option value="en-vi">Anh → Việt</option>
+        </select>
+      </div>
+      <div>
+        <label>Mode viết lại mặc định</label>
+        <select id="defaultRewriteMode">
+          <option value="professional">💼 Chuyên nghiệp</option>
+          <option value="natural">💬 Tự nhiên</option>
+          <option value="detailed">📝 Chi tiết</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Temperature (0 – 1, càng cao càng sáng tạo)</label>
+    <input id="temperature" type="number" min="0" max="1" step="0.1" />
+
+    <div class="btn-row">
+      <button id="btnSave" class="primary">💾 Lưu</button>
+      <button id="btnTest">🔌 Test kết nối</button>
+      <button id="btnReset" class="ghost">↩ Mặc định</button>
+    </div>
+    <div id="msg"></div>
+
+    <details>
+      <summary>Ví dụ cấu hình nhanh</summary>
+      <ul>
+        <li><b>OpenAI:</b> <code>https://api.openai.com/v1</code> + <code>gpt-4o-mini</code></li>
+        <li><b>OpenRouter:</b> <code>https://openrouter.ai/api/v1</code> + <code>openai/gpt-4o-mini</code></li>
+        <li><b>Groq:</b> <code>https://api.groq.com/openai/v1</code> + <code>llama-3.1-8b-instant</code></li>
+        <li><b>Ollama local:</b> <code>http://localhost:11434/v1</code> + <code>qwen2.5:7b</code> (API Key điền <code>ollama</code>)</li>
+        <li><b>LM Studio:</b> <code>http://localhost:1234/v1</code> + tên model đã load</li>
+      </ul>
+    </details>
+  </div>
+</div>
+<script type="module" src="js/options.js"></script>
+</body>
+</html>

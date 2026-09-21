@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ViEn Translate + AI Rewrite</title>
+<link rel="stylesheet" href="css/popup.css" />
+</head>
+<body>
+<header>
+  <div class="logo">🌐</div>
+  <div>
+    <h1>ViEn Translate</h1>
+    <p id="providerStatus" class="status">Chưa cấu hình provider</p>
+  </div>
+  <button id="openOptions" title="Cài đặt provider">⚙</button>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="translate">🌍 Dịch</button>
+  <button class="tab" data-tab="rewrite">✨ Viết lại</button>
+</nav>
+
+<main>
+  <section id="tab-translate" class="tabpanel">
+    <div class="row lang-row">
+      <select id="langPair">
+        <option value="auto">🔄 Tự động (Vi ⇄ En)</option>
+        <option value="vi-en">Việt → Anh</option>
+        <option value="en-vi">Anh → Việt</option>
+      </select>
+      <button id="swapLang" title="Đảo chiều">⇄</button>
+    </div>
+    <textarea id="inputText" rows="5" placeholder="Nhập hoặc dán văn bản Việt / Anh cần dịch..."></textarea>
+    <div class="row actions">
+      <button id="btnTranslate" class="primary">Dịch</button>
+      <button id="btnClear" class="ghost">Xóa</button>
+    </div>
+  </section>
+
+  <section id="tab-rewrite" class="tabpanel hidden">
+    <div class="modes">
+      <label class="mode-card"><input type="radio" name="mode" value="professional" />
+        <span class="mode-icon">💼</span><span class="mode-label">Chuyên nghiệp</span>
+        <small>Lịch sự, công sở</small></label>
+      <label class="mode-card"><input type="radio" name="mode" value="natural" checked />
+        <span class="mode-icon">💬</span><span class="mode-label">Tự nhiên</span>
+        <small>Như người bản xứ</small></label>
+      <label class="mode-card"><input type="radio" name="mode" value="detailed" />
+        <span class="mode-icon">📝</span><span class="mode-label">Chi tiết</span>
+        <small>Mở rộng, rõ ý</small></label>
+    </div>
+    <textarea id="rewriteInput" rows="4" placeholder="Nhập câu cần viết lại bằng AI..."></textarea>
+    <div class="row actions">
+      <button id="btnRewrite" class="primary">Viết lại</button>
+    </div>
+  </section>
+
+  <section id="resultBox" class="hidden">
+    <div class="result-head">
+      <strong>Kết quả</strong>
+      <div>
+        <button id="btnCopy" title="Sao chép">📋</button>
+        <button id="btnSpeak" title="Đọc">🔊</button>
+      </div>
+    </div>
+    <div id="resultText"></div>
+    <div id="resultMeta"></div>
+  </section>
+
+  <div id="errorBox" class="hidden"></div>
+  <div id="loading" class="hidden"><span class="spinner"></span> Đang xử lý bằng AI...</div>
+</main>
+
+<footer>
+  <span>Custom provider: OpenAI-compatible</span>
+  <a href="#" id="footerOptions">Cấu hình BaseURL / Key / Model</a>
+</footer>
+
+<script type="module" src="js/popup.js"></script>
+</body>
+</html>

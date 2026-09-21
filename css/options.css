@@ -1,0 +1,22 @@
+body { font-family: "Segoe UI", system-ui, sans-serif; background: #f3f4f6; color: #1a1d26; margin: 0; }
+.container { max-width: 560px; margin: 32px auto; padding: 0 16px; }
+h1 { font-size: 22px; margin-bottom: 4px; }
+.subtitle { color: #6b7280; font-size: 13px; }
+.subtitle code, details code { background: #eef2ff; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin-top: 12px; }
+label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 13px; }
+.hint { font-weight: 400; color: #6b7280; font-size: 12px; }
+input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+.key-row { display: flex; gap: 8px; }
+.key-row input { flex: 1; }
+.key-row button { border: 1px solid #d1d5db; background: #f9fafb; border-radius: 8px; padding: 0 14px; cursor: pointer; font-size: 16px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-row { display: flex; gap: 8px; margin-top: 16px; }
+button.primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-weight: 700; cursor: pointer; }
+button#btnTest, button.ghost { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+#msg { margin-top: 12px; font-size: 13px; padding: 10px; border-radius: 8px; display: none; }
+#msg.ok { display: block; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+#msg.err { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+details { margin-top: 16px; font-size: 13px; color: #374151; }
+details ul { padding-left: 18px; }
+details li { margin: 4px 0; }

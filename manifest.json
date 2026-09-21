@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "ViEn Translate + AI Rewrite",
+  "version": "1.0.0",
+  "description": "Dịch Việt ⇄ Anh và viết lại bằng AI (Chuyên nghiệp / Tự nhiên / Chi tiết). Hỗ trợ custom provider qua BaseURL + API Key + Model.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ViEn Translate + AI Rewrite",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["css/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "translate-selection": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Dịch văn bản đang chọn"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
