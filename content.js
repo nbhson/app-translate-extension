@@ -13,6 +13,38 @@
     return (window.getSelection()?.toString() || '').trim();
   }
 
+  function ttsLocale(code) {
+    if (code === 'vi') return 'vi-VN';
+    if (code === 'en') return 'en-US';
+    return code || 'en-US';
+  }
+
+  function pickVoice(locale) {
+    try {
+      const voices = speechSynthesis.getVoices?.() || [];
+      if (!voices.length) return null;
+      const base = (locale || '').split('-')[0].toLowerCase();
+      return (
+        voices.find((v) => (v.lang || '').toLowerCase() === String(locale).toLowerCase()) ||
+        voices.find((v) => (v.lang || '').toLowerCase().startsWith(base)) ||
+        null
+      );
+    } catch { return null; }
+  }
+  try { speechSynthesis.getVoices?.(); } catch {}
+
+  function speakText(text, langCode) {
+    const t = (text || '').trim();
+    if (!t) return;
+    const locale = ttsLocale(langCode || (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(t) ? 'vi' : 'en'));
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = locale;
+    const v = pickVoice(locale);
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  }
+
   function showFab(x, y) {
     removeFab();
     fabBtn = document.createElement('button');
@@ -45,18 +77,26 @@
     if (!ok) throw new Error('copy failed');
   }
 
-  function showCard(original, result, isError) {
+  function showCard(original, result, isError, langs) {
     removeCard();
+    const srcLang = langs?.source || '';
+    const tgtLang = langs?.target || '';
+    const langTag = srcLang && tgtLang ? ` (${srcLang.toUpperCase()}→${tgtLang.toUpperCase()})` : '';
     card = document.createElement('div');
     card.className = 'vien-card';
     card.innerHTML = `
-      <div class="vien-card-head"><strong>${isError ? '❌ Lỗi' : '🌐 ViEn Translate'}</strong><button type="button" class="vien-close">✕</button></div>
+      <div class="vien-card-head"><strong>${isError ? '❌ Lỗi' : '🌐 ViEn Translate' + langTag}</strong><button type="button" class="vien-close">✕</button></div>
+      <div class="vien-label">📝 Gốc${srcLang ? ' (' + srcLang.toUpperCase() + ')' : ''}</div>
       <div class="vien-orig"></div>
-      <div class="vien-label">🌍 Bản dịch</div>
+      <div class="vien-actions">
+        <button type="button" data-act="copy-orig">📋 Copy gốc</button>
+        <button type="button" data-act="speak-orig">🔊 Đọc gốc</button>
+      </div>
+      <div class="vien-label">🌍 Bản dịch${tgtLang ? ' (' + tgtLang.toUpperCase() + ')' : ''}</div>
       <div class="vien-result"></div>
       <div class="vien-actions">
-        <button type="button" data-act="copy">📋 Copy</button>
-        <button type="button" data-act="speak">🔊 Đọc</button>
+        <button type="button" data-act="copy">📋 Copy dịch</button>
+        <button type="button" data-act="speak">🔊 Đọc dịch</button>
       </div>
       ${isError ? '' : `
       <div class="vien-divider"></div>
@@ -102,11 +142,14 @@
     flash(card.querySelector('[data-act="copy"]'), '✅ Copied', '❌ Copy lỗi', async () => {
       await copyText(translated);
     });
+    flash(card.querySelector('[data-act="copy-orig"]'), '✅ Copied', '❌ Copy lỗi', async () => {
+      await copyText(original);
+    });
     flash(card.querySelector('[data-act="speak"]'), '🔊 Đang đọc...', '❌ Lỗi đọc', async () => {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(translated);
-      u.lang = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(translated) ? 'vi-VN' : 'en-US';
-      speechSynthesis.speak(u);
+      speakText(translated, tgtLang);
+    });
+    flash(card.querySelector('[data-act="speak-orig"]'), '🔊 Đang đọc...', '❌ Lỗi đọc', async () => {
+      speakText(original, srcLang);
     });
 
     if (isError) {
@@ -160,7 +203,7 @@
       chrome.runtime.sendMessage({ type: 'TRANSLATE', text, source: 'auto', target: 'auto' }, (res) => {
         if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
         if (!res?.ok) return reject(new Error(res?.error));
-        resolve(res.text);
+        resolve(res);
       });
     });
   }
@@ -171,16 +214,16 @@
       showCard(text, '🔄 Extension vừa được Reload/cập nhật.\nVui lòng tải lại trang (F5) rồi thử lại.', true);
       return;
     }
-    showCard(text, '⏳ Đang dịch bằng AI...', false);
+    showCard(text, '⏳ Đang dịch...', false);
     try {
-      const out = await sendTranslate(text);
-      showCard(text, out, false);
+      const res = await sendTranslate(text);
+      showCard(text, res.text, false, { source: res.source, target: res.target });
     } catch (e) {
       const msg = e.message || 'lỗi';
       if (/context invalidated/i.test(msg)) {
         showCard(text, '🔄 Extension vừa được Reload/cập nhật.\nVui lòng tải lại trang (F5) rồi thử lại.', true);
       } else {
-        showCard(text, '❌ ' + msg + '\n→ Bấm icon extension → ⚙ để cấu hình BaseURL / API Key / Model.', true);
+        showCard(text, '❌ ' + msg, true);
       }
     }
   }
@@ -210,7 +253,7 @@
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === 'VIEN_SHOW_RESULT') {
-      showCard(msg.original || '', msg.result || '', !!msg.error);
+      showCard(msg.original || '', msg.result || '', !!msg.error, { source: msg.source, target: msg.target });
     } else if (msg?.type === 'VIEN_TRANSLATE_SHORTCUT') {
       const t = getSelectedText();
       if (t) translateSelection(t);

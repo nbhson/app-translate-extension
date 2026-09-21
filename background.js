@@ -1,5 +1,6 @@
 import { getSettings } from './js/settings.js';
-import { chatCompletions, buildTranslateMessages, buildRewriteMessages } from './js/api.js';
+import { chatCompletions, buildRewriteMessages } from './js/api.js';
+import { translateFree } from './js/translate.js';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -30,18 +31,10 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 async function doTranslate(text, source, target) {
+  // Dịch miễn phí qua Google Translate — không cần AI/provider
   const t = (text || '').trim();
   if (!t) throw new Error('Văn bản trống — hãy bôi đen văn bản cần dịch rồi thử lại.');
-  const s = await getSettings();
-  const { messages, resolved } = buildTranslateMessages(t, source, target);
-  const result = await chatCompletions({
-    baseUrl: s.baseUrl,
-    apiKey: s.apiKey,
-    model: s.model,
-    messages,
-    temperature: 0.3
-  });
-  return { text: result, ...resolved };
+  return translateFree(t, source, target);
 }
 
 async function doRewrite(text, mode) {
@@ -72,6 +65,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       type: 'VIEN_SHOW_RESULT',
       original: selected,
       result: payload.text,
+      source: payload.source,
+      target: payload.target,
       kind: info.menuItemId.startsWith('rewrite') ? 'rewrite' : 'translate'
     });
   } catch (e) {

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Chrome Extension (Manifest V3) dịch **Việt ⇄ Anh** và **viết lại bằng AI**.
-Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter, Groq, Together, Ollama, LM Studio, vLLM...
+Dịch chạy ngay không cần cấu hình. Viết lại dùng mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter, Groq, Together, Ollama, LM Studio, vLLM...
 
 > 🇬🇧 English summary below.
 
@@ -14,14 +14,14 @@ Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter
 
 ## ✨ Tính năng
 
-### 🌍 Dịch AI
-- 🔄 **Tự động** phát hiện Việt ⇄ Anh
+### 🌍 Dịch
+- 🔄 **Tự động** phát hiện Việt ⇄ Anh (không cần cấu hình AI)
 - 🇻🇳➡️🇬🇧 Việt → Anh / 🇬🇧➡️🇻🇳 Anh → Việt
 - Bôi đen văn bản trên bất kỳ trang web nào → hiện nút **🌐 Dịch**
 - Chuột phải → **Dịch nhanh** (Auto / VI→EN / EN→VI)
 - Phím tắt `Alt+T` để dịch vùng đang chọn
-- 🔊 Đọc kết quả bằng Text-to-Speech (tự nhận diện vi-VN / en-US)
-- 📋 Copy 1 click
+- 🔊 Đọc cả văn bản gốc và bản dịch (đúng giọng vi-VN / en-US theo chiều dịch)
+- 📋 Copy 1 click (riêng nút Copy gốc / Copy dịch)
 
 ### ✨ Viết lại bằng AI (3 mode)
 | Mode | Mô tả |
@@ -33,7 +33,7 @@ Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter
 - Viết lại ngay trong popup
 - Viết lại ngay trong bong bóng (card) trên trang web, giữ nguyên ngôn ngữ gốc
 
-### 🔌 Custom Provider
+### 🔌 Custom Provider (chỉ cho Viết lại)
 - Cấu hình qua `Base URL + API Key + Model`
 - Nút **📥 lấy danh sách models** tự động từ `/models`
 - Nút **🔌 Test kết nối** trước khi lưu
@@ -45,7 +45,7 @@ Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter
 
 1. Mở `chrome://extensions` → bật **Developer mode**
 2. Bấm **Load unpacked** → chọn thư mục này
-3. Bấm icon extension → **⚙** → nhập cấu hình:
+3. Dịch dùng ngay, không cần cấu hình. Chỉ khi dùng **✨ Viết lại** mới cần cấu hình AI: bấm icon extension → **⚙** → nhập:
    - **Base URL:** `https://api.openai.com/v1`
    - **API Key:** `sk-...`
    - **Model:** `gpt-4o-mini`
@@ -76,7 +76,7 @@ Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter
 **Trên trang web:**
 1. Bôi đen đoạn văn bản bất kỳ
 2. Bấm nút nổi **🌐 Dịch**, hoặc chuột phải → Dịch nhanh
-3. Card kết quả hiện: bản dịch + nút Copy / Đọc + box Viết lại
+3. Card kết quả hiện: văn bản gốc + bản dịch (kèm Copy / 🔊 Đọc riêng từng phần) + box Viết lại
 
 **Phím tắt:**
 - `Alt+T`: dịch văn bản đang chọn (đổi tại `chrome://extensions/shortcuts`)
@@ -88,15 +88,17 @@ Hỗ trợ mọi provider chuẩn OpenAI `/chat/completions`: OpenAI, OpenRouter
 ```
 manifest.json                 # Manifest V3: popup, background, content-script, commands
 popup.html / css/popup.css / js/popup.js
-options.html / css/options.css / js/options.js   # Trang cài đặt provider
-background.js                 # Context menu + gọi API (tránh CORS) + message hub
+options.html / css/options.css / js/options.js   # Trang cài đặt provider AI (cho Rewrite)
+background.js                 # Context menu + message hub (dịch trực tiếp, rewrite qua AI)
 content.js / css/content.css  # Bong bóng dịch khi bôi đen (FAB + card)
-js/api.js                     # Client OpenAI-compatible + prompt dịch/rewrite
+js/translate.js               # Dịch trực tiếp (chunk + retry + cache)
+js/tts.js                     # Text-to-Speech (đọc gốc/dịch đúng giọng vi-VN/en-US)
+js/api.js                     # Client OpenAI-compatible cho Rewrite
 js/settings.js                # Storage + detect ngôn ngữ
 icons/                        # icon16/48/128
 ```
 
-**Luồng gọi API:** `popup / content` → `chrome.runtime.sendMessage` → `background.js` → `fetch(BaseURL/chat/completions)` → trả kết quả về. Cách này tránh lỗi CORS của trang web.
+**Luồng gọi:** `popup / content` → `chrome.runtime.sendMessage` → `background.js` → dịch trực tiếp (không cần AI) hoặc `fetch(BaseURL/chat/completions)` cho Rewrite → trả kết quả về. Cách này tránh lỗi CORS của trang web.
 
 ---
 
@@ -104,12 +106,12 @@ icons/                        # icon16/48/128
 
 | Quyền | Vì sao cần |
 |-------|------------|
-| `storage` | Lưu BaseURL / Key / Model |
+| `storage` | Lưu BaseURL / Key / Model cho Rewrite + lịch sử |
 | `contextMenus` | Menu chuột phải dịch nhanh |
 | `scripting`, `activeTab` | Lấy text vùng chọn, phím tắt |
 | `<all_urls>` | Content-script bong bóng dịch mọi trang |
 
-API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình.
+API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình. Chức năng Dịch không yêu cầu API Key.
 
 ---
 
@@ -125,7 +127,7 @@ API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi �
 
 ## 🇬🇧 English (short)
 
-**ViEn Translate + AI Rewrite** — Manifest V3 Chrome extension for Vietnamese ⇄ English AI translation + rewriting (Professional / Natural / Detailed). Works with any OpenAI-compatible provider via `Base URL + API Key + Model`. Features: select-to-translate bubble, right-click quick translate, `Alt+T` shortcut, popup translator/rewriter, TTS, local models (Ollama/LM Studio) supported.
+**ViEn Translate + AI Rewrite** — Manifest V3 Chrome extension for Vietnamese ⇄ English translation + AI rewriting (Professional / Natural / Detailed). Translation works out of the box; rewriting uses any OpenAI-compatible provider via `Base URL + API Key + Model`. Features: select-to-translate bubble, right-click quick translate, `Alt+T` shortcut, popup translator/rewriter, TTS for both source and translation, local models (Ollama/LM Studio) supported.
 
 ---
 

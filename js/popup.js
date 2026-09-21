@@ -1,6 +1,12 @@
 import { getSettings } from './settings.js';
+import { speak, guessLang } from './tts.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Giữ lang code chính xác từ background (translateFree resolvePair)
+// để TTS đọc đúng giọng vi-VN / en-US, không đoán bằng regex.
+let lastSrc = null; // { text, lang }
+let lastDst = null; // { text, lang }
 
 const tabBtns = document.querySelectorAll('.tab');
 tabBtns.forEach((b) =>
@@ -40,6 +46,7 @@ function showResult(text, meta = '') {
 }
 
 async function refreshStatus() {
+  // Dịch luôn sẵn sàng. Chỉ Rewrite cần provider AI.
   // Đọc trực tiếp từ storage, KHÔNG qua service worker
   // (gọi SW lúc popup mở sẽ bắt Chrome đánh thức SW => popup hiện rất chậm)
   let settings = null;
@@ -49,15 +56,16 @@ async function refreshStatus() {
     settings = null;
   }
   const el = $('providerStatus');
-  if (!settings?.apiKey || !settings?.baseUrl || !settings?.model) {
-    el.textContent = '⚠ Chưa cấu hình provider — bấm ⚙ để cài đặt';
+  const aiReady = !!(settings?.apiKey && settings?.baseUrl && settings?.model);
+  if (!aiReady) {
+    el.textContent = '🌍 Dịch sẵn sàng • ✨ Rewrite cần cấu hình AI (⚙)';
     el.className = 'status warn';
   } else {
     try {
       const u = new URL(settings.baseUrl);
-      el.textContent = `✓ ${settings.model} @ ${u.host}`;
+      el.textContent = `🌍 Dịch sẵn sàng • ✨ ${settings.model} @ ${u.host}`;
     } catch {
-      el.textContent = `✓ ${settings.model}`;
+      el.textContent = `🌍 Dịch sẵn sàng • ✨ ${settings.model}`;
     }
     el.className = 'status ok';
   }
@@ -78,6 +86,8 @@ $('btnTranslate').addEventListener('click', async () => {
   setLoading(true, $('btnTranslate'));
   try {
     const res = await sendMsg({ type: 'TRANSLATE', text, source, target });
+    lastSrc = { text, lang: res.source };
+    lastDst = { text: res.text, lang: res.target };
     showResult(res.text, `${res.source} → ${res.target}`);
     saveHistory({ kind: 'translate', input: text, output: res.text });
   } catch (e) {
@@ -95,6 +105,9 @@ $('btnRewrite').addEventListener('click', async () => {
   setLoading(true, $('btnRewrite'));
   try {
     const res = await sendMsg({ type: 'REWRITE', text, mode });
+    const lang = guessLang(text);
+    lastSrc = { text, lang };
+    lastDst = { text: res.text, lang };
     const label = { professional: 'Chuyên nghiệp 💼', natural: 'Tự nhiên 💬', detailed: 'Chi tiết 📝' }[mode];
     showResult(res.text, `Viết lại • ${label}`);
     saveHistory({ kind: 'rewrite', input: text, output: res.text });
@@ -121,12 +134,26 @@ $('btnCopy').addEventListener('click', async () => {
 });
 
 $('btnSpeak').addEventListener('click', () => {
-  const t = $('resultText').textContent;
+  // Loa bản dịch: ưu tiên lang code chính xác từ kết quả dịch
+  const t = lastDst?.text || $('resultText').textContent;
   if (!t) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t);
-  u.lang = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(t) ? 'vi-VN' : 'en-US';
-  speechSynthesis.speak(u);
+  speak(t, lastDst?.lang || guessLang(t));
+});
+
+$('btnSpeakSrc').addEventListener('click', () => {
+  // Loa văn bản gốc: ưu tiên lang code chính xác từ kết quả dịch
+  const t = lastSrc?.text || $('inputText').value.trim() || $('rewriteInput').value.trim();
+  if (!t) return;
+  speak(t, lastSrc?.lang || guessLang(t));
+});
+
+$('btnSpeakInput').addEventListener('click', () => {
+  // Loa ngay ở ô nhập (chưa cần dịch): dùng chiều đang chọn, fallback đoán
+  const t = $('inputText').value.trim();
+  if (!t) return;
+  const pair = $('langPair').value;
+  const preferred = pair === 'vi-en' ? 'vi' : pair === 'en-vi' ? 'en' : lastSrc?.lang;
+  speak(t, lastSrc && lastSrc.text === t ? lastSrc.lang : guessLang(t, preferred));
 });
 
 $('swapLang').addEventListener('click', () => {

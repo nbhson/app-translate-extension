@@ -1,4 +1,5 @@
-// OpenAI-compatible chat completions client.
+// OpenAI-compatible chat completions client — CHỈ dùng cho REWRITE (AI).
+// Dịch (TRANSLATE) dùng Google miễn phí ở js/translate.js, không tốn token.
 // Works with OpenAI, OpenRouter, Together, Groq, Ollama (/v1), LM Studio, vLLM...
 import { normalizeBaseUrl } from './settings.js';
 
@@ -55,34 +56,6 @@ export async function listModels({ baseUrl, apiKey, timeoutMs = 15000 }) {
   const data = await res.json();
   const ids = (data?.data || []).map((m) => m.id).filter(Boolean).sort();
   return ids;
-}
-
-const LANG_NAME = { vi: 'Tiếng Việt', en: 'Tiếng Anh' };
-
-export function buildTranslateMessages(text, source, target) {
-  let src = source;
-  let tgt = target;
-  if (source === 'auto' || target === 'auto') {
-    const detected = source === 'auto' && text
-      ? (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text) ? 'vi' : 'en')
-      : source;
-    src = detected === 'auto' ? 'en' : detected;
-    tgt = src === 'vi' ? 'en' : 'vi';
-  }
-  const sys =
-    `You are a professional translator. Translate from ${LANG_NAME[src] || src} to ${LANG_NAME[tgt] || tgt}. ` +
-    `The user message contains the text to translate wrapped in triple quotes ("""). Translate ONLY the content inside the quotes. ` +
-    `ALWAYS output a translation, even if the text is a single word or a very short phrase. ` +
-    `NEVER ask the user to provide text. NEVER explain or add notes. ` +
-    `Return ONLY the translated text, no quotes, no extra notes. ` +
-    `Preserve formatting, line breaks, numbers and special terms.`;
-  return {
-    messages: [
-      { role: 'system', content: sys },
-      { role: 'user', content: `"""${text}"""` }
-    ],
-    resolved: { source: src, target: tgt }
-  };
 }
 
 const REWRITE_SYSTEM = {

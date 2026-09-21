@@ -34,6 +34,7 @@
     <textarea id="inputText" rows="5" placeholder="Nhập hoặc dán văn bản Việt / Anh cần dịch..."></textarea>
     <div class="row actions">
       <button id="btnTranslate" class="primary">Dịch</button>
+      <button id="btnSpeakInput" class="ghost" title="Đọc văn bản gốc">🔊</button>
       <button id="btnClear" class="ghost">Xóa</button>
     </div>
   </section>
@@ -61,7 +62,8 @@
       <strong>Kết quả</strong>
       <div>
         <button id="btnCopy" title="Sao chép">📋</button>
-        <button id="btnSpeak" title="Đọc">🔊</button>
+        <button id="btnSpeakSrc" title="Đọc văn bản gốc">🔊 Gốc</button>
+        <button id="btnSpeak" title="Đọc bản dịch">🔊 Dịch</button>
       </div>
     </div>
     <div id="resultText"></div>
@@ -69,12 +71,12 @@
   </section>
 
   <div id="errorBox" class="hidden"></div>
-  <div id="loading" class="hidden"><span class="spinner"></span> Đang xử lý bằng AI...</div>
+  <div id="loading" class="hidden"><span class="spinner"></span> Đang xử lý...</div>
 </main>
 
 <footer>
-  <span>Custom provider: OpenAI-compatible</span>
-  <a href="#" id="footerOptions">Cấu hình BaseURL / Key / Model</a>
+  <span>ViEn Translate • Viết lại bằng AI</span>
+  <a href="#" id="footerOptions">Cấu hình AI cho Rewrite</a>
 </footer>
 
 <script type="module" src="js/popup.js"></script>
