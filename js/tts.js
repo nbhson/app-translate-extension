@@ -1,5 +1,11 @@
 // Helper TTS dùng lang code chính xác (vi/en) thay vì đoán bằng regex.
 // Dùng cho popup (module). Content-script copy bản inline vì nó là classic script.
+//
+// QUAN TRỌNG (fix popup mở chậm trên Windows):
+// - KHÔNG gọi speechSynthesis.getVoices() ở top-level lúc import.
+//   Trên Windows, Chrome phải liệt kê toàn bộ SAPI/OneCore voices hệ thống,
+//   có thể block main thread 1-3s khiến popup hiện rất lâu.
+// - Voices chỉ được nạp lười (lazy) khi user thật sự bấm nút 🔊.
 
 export function langToLocale(code) {
   if (code === 'vi') return 'vi-VN';
@@ -7,9 +13,36 @@ export function langToLocale(code) {
   return code || 'en-US';
 }
 
+// Cache voices sau lần nạp đầu, kèm listener async (không block lúc import)
+let _voicesCache = null;
+let _voicesHooked = false;
+
+function ensureVoicesHook() {
+  if (_voicesHooked) return;
+  _voicesHooked = true;
+  try {
+    if (typeof speechSynthesis !== 'undefined' && 'onvoiceschanged' in speechSynthesis) {
+      speechSynthesis.onvoiceschanged = () => { _voicesCache = null; };
+    }
+  } catch {}
+}
+
+function getVoicesLazy() {
+  try {
+    ensureVoicesHook();
+    if (_voicesCache) return _voicesCache;
+    // Lần đầu user bấm 🔊 mới gọi — lúc này popup đã hiện xong nên không sao.
+    const v = speechSynthesis.getVoices?.() || [];
+    if (v.length) _voicesCache = v;
+    return v;
+  } catch {
+    return [];
+  }
+}
+
 function pickVoice(locale) {
   try {
-    const voices = speechSynthesis.getVoices?.() || [];
+    const voices = getVoicesLazy();
     if (!voices.length) return null;
     const base = (locale || '').split('-')[0].toLowerCase();
     return (
@@ -21,15 +54,6 @@ function pickVoice(locale) {
     return null;
   }
 }
-
-// Đảm bảo voices đã load (Chrome load async)
-let _voicesReady = false;
-try {
-  if (typeof speechSynthesis !== 'undefined') {
-    speechSynthesis.getVoices();
-    speechSynthesis.onvoiceschanged = () => { _voicesReady = true; };
-  }
-} catch {}
 
 export function speak(text, langCode) {
   const t = (text || '').trim();

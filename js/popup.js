@@ -1,5 +1,16 @@
 import { getSettings } from './settings.js';
-import { speak, guessLang } from './tts.js';
+import { guessLang } from './tts.js';
+
+// Lazy-load speak (chứa speechSynthesis) CHỈ khi user bấm 🔊.
+// Trên Windows, chạm vào speechSynthesis lúc popup mở làm block 1-3s.
+let _speakFn = null;
+async function speakLazy(text, langCode) {
+  if (!_speakFn) {
+    const m = await import('./tts.js');
+    _speakFn = m.speak;
+  }
+  _speakFn(text, langCode);
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -137,14 +148,14 @@ $('btnSpeak').addEventListener('click', () => {
   // Loa bản dịch: ưu tiên lang code chính xác từ kết quả dịch
   const t = lastDst?.text || $('resultText').textContent;
   if (!t) return;
-  speak(t, lastDst?.lang || guessLang(t));
+  speakLazy(t, lastDst?.lang || guessLang(t));
 });
 
 $('btnSpeakSrc').addEventListener('click', () => {
   // Loa văn bản gốc: ưu tiên lang code chính xác từ kết quả dịch
   const t = lastSrc?.text || $('inputText').value.trim() || $('rewriteInput').value.trim();
   if (!t) return;
-  speak(t, lastSrc?.lang || guessLang(t));
+  speakLazy(t, lastSrc?.lang || guessLang(t));
 });
 
 $('btnSpeakInput').addEventListener('click', () => {
@@ -153,7 +164,7 @@ $('btnSpeakInput').addEventListener('click', () => {
   if (!t) return;
   const pair = $('langPair').value;
   const preferred = pair === 'vi-en' ? 'vi' : pair === 'en-vi' ? 'en' : lastSrc?.lang;
-  speak(t, lastSrc && lastSrc.text === t ? lastSrc.lang : guessLang(t, preferred));
+  speakLazy(t, lastSrc && lastSrc.text === t ? lastSrc.lang : guessLang(t, preferred));
 });
 
 $('swapLang').addEventListener('click', () => {
@@ -181,4 +192,14 @@ $('inputText').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('btnTranslate').click(); }
 });
 
-refreshStatus().catch(() => {});
+// Chạy sau khi popup đã paint xong để cửa sổ hiện tức thì.
+// getSettingsFast đã có timeout 350ms + cache nên không bao giờ treo popup.
+function scheduleStatus() {
+  const run = () => refreshStatus().catch(() => {});
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(run, { timeout: 500 });
+  } else {
+    setTimeout(run, 0);
+  }
+}
+scheduleStatus();
