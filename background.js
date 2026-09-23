@@ -1,8 +1,6 @@
 import { getSettings } from './js/settings.js';
 import { translateFree } from './js/translate.js';
-// NOTE: js/api.js (chatCompletions) KHÔNG import tĩnh ở đây.
-// Nó chỉ được dynamic import khi user dùng Rewrite, để service worker
-// thức dậy nhanh (popup/context-menu không phải chờ parse module AI).
+import { chatCompletions, buildRewriteMessages } from './js/api.js';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -41,8 +39,8 @@ async function doTranslate(text, source, target) {
 
 async function doRewrite(text, mode) {
   const s = await getSettings();
-  // Lazy-load module AI nặng chỉ khi cần Rewrite
-  const { chatCompletions, buildRewriteMessages } = await import('./js/api.js');
+  // NOTE: Không dùng dynamic import() trong MV3 service worker — bị cấm
+  // bởi spec (ServiceWorkerGlobalScope). Dùng static import ở đầu file.
   const messages = buildRewriteMessages(text, mode);
   const result = await chatCompletions({
     baseUrl: s.baseUrl,
