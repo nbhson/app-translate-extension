@@ -74,3 +74,17 @@ export function buildRewriteMessages(text, mode) {
     { role: 'user', content: text }
   ];
 }
+
+const LANG_NAME = { vi: 'Vietnamese', en: 'English' };
+
+export function buildTranslateMessages(text, source, target) {
+  const srcName = LANG_NAME[source] || source;
+  const tgtName = LANG_NAME[target] || target;
+  return [
+    {
+      role: 'system',
+      content: `You are a professional translator. Translate the user text from ${srcName} to ${tgtName}. Return ONLY the translated text, no explanations, no quotes, no extra formatting. Preserve line breaks.`
+    },
+    { role: 'user', content: text }
+  ];
+}

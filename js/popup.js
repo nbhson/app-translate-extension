@@ -99,7 +99,8 @@ $('btnTranslate').addEventListener('click', async () => {
     const res = await sendMsg({ type: 'TRANSLATE', text, source, target });
     lastSrc = { text, lang: res.source };
     lastDst = { text: res.text, lang: res.target };
-    showResult(res.text, `${res.source} → ${res.target}`);
+    const via = res.providerLabel ? ` • via ${res.providerLabel}` : '';
+    showResult(res.text, `${res.source} → ${res.target}${via}`);
     saveHistory({ kind: 'translate', input: text, output: res.text });
   } catch (e) {
     showError(e.message);

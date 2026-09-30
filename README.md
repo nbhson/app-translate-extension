@@ -14,9 +14,13 @@ Dịch chạy ngay không cần cấu hình. Viết lại dùng mọi provider c
 
 ## ✨ Tính năng
 
-### 🌍 Dịch
+### 🌍 Dịch (chuỗi fallback tự động)
 - 🔄 **Tự động** phát hiện Việt ⇄ Anh (không cần cấu hình AI)
 - 🇻🇳➡️🇬🇧 Việt → Anh / 🇬🇧➡️🇻🇳 Anh → Việt
+- ⛓️ **Fallback nhiều tầng:** `Google` → `MyMemory` → `LibreTranslate` → `Lingva` → `LLM (cuối cùng)`.
+  Khi một nguồn miễn phí bị giới hạn (429/quota/timeout), extension tự thử nguồn tiếp theo.
+  LLM chỉ được gọi khi tất cả nguồn miễn phí đều lỗi **và** đã cấu hình AI ở ⚙ (Base URL + API Key + Model).
+  Nguồn đã dùng được hiển thị kèm kết quả (`via Google / MyMemory / ... / LLM`).
 - Bôi đen văn bản trên bất kỳ trang web nào → hiện nút **🌐 Dịch**
 - Chuột phải → **Dịch nhanh** (Auto / VI→EN / EN→VI)
 - Phím tắt `Alt+T` để dịch vùng đang chọn
@@ -33,7 +37,7 @@ Dịch chạy ngay không cần cấu hình. Viết lại dùng mọi provider c
 - Viết lại ngay trong popup
 - Viết lại ngay trong bong bóng (card) trên trang web, giữ nguyên ngôn ngữ gốc
 
-### 🔌 Custom Provider (chỉ cho Viết lại)
+### 🔌 Custom Provider (Viết lại + fallback Dịch cuối cùng)
 - Cấu hình qua `Base URL + API Key + Model`
 - Nút **📥 lấy danh sách models** tự động từ `/models`
 - Nút **🔌 Test kết nối** trước khi lưu
@@ -88,17 +92,18 @@ Dịch chạy ngay không cần cấu hình. Viết lại dùng mọi provider c
 ```
 manifest.json                 # Manifest V3: popup, background, content-script, commands
 popup.html / css/popup.css / js/popup.js
-options.html / css/options.css / js/options.js   # Trang cài đặt provider AI (cho Rewrite)
-background.js                 # Context menu + message hub (dịch trực tiếp, rewrite qua AI)
+options.html / css/options.css / js/options.js   # Trang cài đặt provider AI (Rewrite + fallback Dịch cuối cùng)
+background.js                 # Context menu + message hub (dịch fallback chain, rewrite qua AI)
 content.js / css/content.css  # Bong bóng dịch khi bôi đen (FAB + card)
-js/translate.js               # Dịch trực tiếp (chunk + retry + cache)
+js/translate.js               # Dịch fallback: Google -> MyMemory -> Libre -> Lingva -> LLM (chunk + cache)
 js/tts.js                     # Text-to-Speech (đọc gốc/dịch đúng giọng vi-VN/en-US)
-js/api.js                     # Client OpenAI-compatible cho Rewrite
+js/api.js                     # Client OpenAI-compatible cho Rewrite + LLM dịch fallback
 js/settings.js                # Storage + detect ngôn ngữ
+tests/translate.fallback.test.mjs  # Test chuỗi fallback (mock fetch): node --test tests/translate.fallback.test.mjs
 icons/                        # icon16/48/128
 ```
 
-**Luồng gọi:** `popup / content` → `chrome.runtime.sendMessage` → `background.js` → dịch trực tiếp (không cần AI) hoặc `fetch(BaseURL/chat/completions)` cho Rewrite → trả kết quả về. Cách này tránh lỗi CORS của trang web.
+**Luồng gọi:** `popup / content` → `chrome.runtime.sendMessage` → `background.js` → thử lần lượt các nguồn dịch miễn phí, cuối cùng là `fetch(BaseURL/chat/completions)` cho Rewrite **và** cho Dịch fallback → trả kết quả về kèm `provider`. Cách này tránh lỗi CORS của trang web.
 
 ---
 
@@ -106,12 +111,21 @@ icons/                        # icon16/48/128
 
 | Quyền | Vì sao cần |
 |-------|------------|
-| `storage` | Lưu BaseURL / Key / Model cho Rewrite + lịch sử |
+| `storage` | Lưu BaseURL / Key / Model cho Rewrite + fallback Dịch LLM + lịch sử |
 | `contextMenus` | Menu chuột phải dịch nhanh |
 | `scripting`, `activeTab` | Lấy text vùng chọn, phím tắt |
 | `<all_urls>` | Content-script bong bóng dịch mọi trang |
 
-API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình. Chức năng Dịch không yêu cầu API Key.
+API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình. Chức năng Dịch dùng các nguồn miễn phí trước, chỉ gọi AI khi tất cả nguồn miễn phí đều lỗi.
+
+---
+
+## 🧪 Test
+
+```bash
+# Test chuỗi fallback (không cần mạng, dùng mock fetch)
+node --test tests/translate.fallback.test.mjs
+```
 
 ---
 
@@ -127,7 +141,7 @@ API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi �
 
 ## 🇬🇧 English (short)
 
-**ViEn Translate + AI Rewrite** — Manifest V3 Chrome extension for Vietnamese ⇄ English translation + AI rewriting (Professional / Natural / Detailed). Translation works out of the box; rewriting uses any OpenAI-compatible provider via `Base URL + API Key + Model`. Features: select-to-translate bubble, right-click quick translate, `Alt+T` shortcut, popup translator/rewriter, TTS for both source and translation, local models (Ollama/LM Studio) supported.
+**ViEn Translate + AI Rewrite** — Manifest V3 Chrome extension for Vietnamese ⇄ English translation + AI rewriting (Professional / Natural / Detailed). Translation works out of the box via a fallback chain (Google → MyMemory → LibreTranslate → Lingva → LLM as last resort); rewriting uses any OpenAI-compatible provider via `Base URL + API Key + Model`. Features: select-to-translate bubble, right-click quick translate, `Alt+T` shortcut, popup translator/rewriter, TTS for both source and translation, local models (Ollama/LM Studio) supported.
 
 ---
 

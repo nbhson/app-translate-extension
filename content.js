@@ -82,10 +82,11 @@
     const srcLang = langs?.source || '';
     const tgtLang = langs?.target || '';
     const langTag = srcLang && tgtLang ? ` (${srcLang.toUpperCase()}→${tgtLang.toUpperCase()})` : '';
+    const viaTag = langs?.providerLabel ? ` • ${langs.providerLabel}` : '';
     card = document.createElement('div');
     card.className = 'vien-card';
     card.innerHTML = `
-      <div class="vien-card-head"><strong>${isError ? '❌ Lỗi' : '🌐 ViEn Translate' + langTag}</strong><button type="button" class="vien-close">✕</button></div>
+      <div class="vien-card-head"><strong>${isError ? '❌ Lỗi' : '🌐 ViEn Translate' + langTag + viaTag}</strong><button type="button" class="vien-close">✕</button></div>
       <div class="vien-label">📝 Gốc${srcLang ? ' (' + srcLang.toUpperCase() + ')' : ''}</div>
       <div class="vien-orig"></div>
       <div class="vien-actions">
@@ -217,7 +218,7 @@
     showCard(text, '⏳ Đang dịch...', false);
     try {
       const res = await sendTranslate(text);
-      showCard(text, res.text, false, { source: res.source, target: res.target });
+      showCard(text, res.text, false, { source: res.source, target: res.target, providerLabel: res.providerLabel ? 'via ' + res.providerLabel : '' });
     } catch (e) {
       const msg = e.message || 'lỗi';
       if (/context invalidated/i.test(msg)) {
@@ -253,7 +254,7 @@
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === 'VIEN_SHOW_RESULT') {
-      showCard(msg.original || '', msg.result || '', !!msg.error, { source: msg.source, target: msg.target });
+      showCard(msg.original || '', msg.result || '', !!msg.error, { source: msg.source, target: msg.target, providerLabel: msg.providerLabel ? 'via ' + msg.providerLabel : '' });
     } else if (msg?.type === 'VIEN_TRANSLATE_SHORTCUT') {
       const t = getSelectedText();
       if (t) translateSelection(t);

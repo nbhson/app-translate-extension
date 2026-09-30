@@ -1,5 +1,5 @@
 import { getSettings } from './js/settings.js';
-import { translateFree } from './js/translate.js';
+import { translateWithFallback } from './js/translate.js';
 import { chatCompletions, buildRewriteMessages } from './js/api.js';
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -31,10 +31,18 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 async function doTranslate(text, source, target) {
-  // Dịch miễn phí qua Google Translate — không cần AI/provider
+  // Chuỗi fallback: Google -> MyMemory -> LibreTranslate -> Lingva -> LLM (cuối cùng).
+  // LLM chỉ dùng khi tất cả free đều lỗi và đã cấu hình BaseURL + Key + Model.
   const t = (text || '').trim();
   if (!t) throw new Error('Văn bản trống — hãy bôi đen văn bản cần dịch rồi thử lại.');
-  return translateFree(t, source, target);
+  const s = await getSettings();
+  const r = await translateWithFallback(t, source, target, {
+    llm: { baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model }
+  });
+  try {
+    console.log(`[ViEn] translate via ${r.provider}${r.cached ? ' (cache)' : ''}, fallback qua ${r.tried.length} nguồn.`);
+  } catch {}
+  return r;
 }
 
 async function doRewrite(text, mode) {
@@ -69,6 +77,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       result: payload.text,
       source: payload.source,
       target: payload.target,
+      provider: payload.provider,
+      providerLabel: payload.providerLabel,
       kind: info.menuItemId.startsWith('rewrite') ? 'rewrite' : 'translate'
     });
   } catch (e) {
