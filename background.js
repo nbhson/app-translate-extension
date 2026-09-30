@@ -95,14 +95,37 @@ chrome.commands.onCommand.addListener(async (command) => {
   chrome.tabs.sendMessage(tab.id, { type: 'VIEN_TRANSLATE_SHORTCUT' });
 });
 
+// Timeout tổng cho cả chuỗi fallback (4 free ~8s/request + LLM 60s).
+// Đảm bảo popup KHÔNG BAO GIỜ treo "Đang xử lý..." vĩnh viễn:
+// hết timeout là trả lỗi rõ ràng thay vì im lặng.
+const OVERALL_TIMEOUT_MS = 100000;
+function withOverallTimeout(promise, ms, label) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} quá lâu (>${Math.round(ms / 1000)}s) chưa xong. Khả năng: mạng chặn translate.googleapis.com, hoặc AI local (${'localhost'}) treo/đang load model. Mở chrome://extensions → Inspect service worker để xem log [ViEn].`)),
+      ms
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // Central message hub: popup + content script call background to avoid CORS
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     if (msg?.type === 'TRANSLATE') {
-      const r = await doTranslate(msg.text, msg.source, msg.target);
+      const r = await withOverallTimeout(
+        doTranslate(msg.text, msg.source, msg.target),
+        OVERALL_TIMEOUT_MS,
+        'Dịch'
+      );
       sendResponse({ ok: true, ...r });
     } else if (msg?.type === 'REWRITE') {
-      const r = await doRewrite(msg.text, msg.mode);
+      const r = await withOverallTimeout(
+        doRewrite(msg.text, msg.mode),
+        OVERALL_TIMEOUT_MS,
+        'Viết lại'
+      );
       sendResponse({ ok: true, ...r });
     } else if (msg?.type === 'GET_SETTINGS') {
       sendResponse({ ok: true, settings: await getSettings() });

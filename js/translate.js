@@ -4,6 +4,9 @@
 // (rate-limit / timeout / rỗng) VÀ đã cấu hình BaseURL + API Key + Model.
 
 import { detectLang } from './settings.js';
+import { chatCompletions, buildTranslateMessages } from './api.js';
+// NOTE: dùng static import cho api.js — dynamic import() bị cấm trong
+// MV3 service worker và sẽ treo/thất bại khi fallback tới LLM.
 
 const TRANSLATE_MAX_CHARS = 4200;
 const FREE_TIMEOUT_MS = 8000;
@@ -275,9 +278,6 @@ function llmConfigured(llm) {
 }
 
 async function runLlmProvider(text, sl, tl, llm) {
-  // Dynamic import để translate.js không phụ thuộc tĩnh vào api.js
-  // (tránh cycle khi api.js import settings).
-  const { chatCompletions, buildTranslateMessages } = await import('./api.js');
   const messages = buildTranslateMessages(text, sl, tl);
   const out = await chatCompletions({
     baseUrl: llm.baseUrl,

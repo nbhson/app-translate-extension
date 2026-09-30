@@ -30,9 +30,23 @@ tabBtns.forEach((b) =>
   })
 );
 
-function sendMsg(msg) {
+function sendMsg(msg, timeoutMs = 115000) {
   return new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new Error(
+        `Hết thời gian chờ (>${Math.round(timeoutMs / 1000)}s) mà background chưa trả lời. ` +
+        `Hãy: 1) mở chrome://extensions → bật Developer mode → Inspect service worker xem log [ViEn]; ` +
+        `2) kiểm tra mạng tới translate.googleapis.com; ` +
+        `3) nếu dùng AI local, kiểm tra server local còn chạy không.`
+      ));
+    }, timeoutMs);
     chrome.runtime.sendMessage(msg, (res) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
       if (!res?.ok) return reject(new Error(res?.error || 'Lỗi không xác định'));
       resolve(res);
@@ -40,9 +54,22 @@ function sendMsg(msg) {
   });
 }
 
+let _loadingTimer = null;
 function setLoading(on, btn) {
   $('loading').classList.toggle('hidden', !on);
   if (btn) btn.disabled = on;
+  // Đếm giây để user biết request có đang chạy hay đã treo
+  if (_loadingTimer) { clearInterval(_loadingTimer); _loadingTimer = null; }
+  if (on) {
+    const t0 = Date.now();
+    const el = $('loadingText');
+    _loadingTimer = setInterval(() => {
+      if (el) el.textContent = `Đang xử lý... ${((Date.now() - t0) / 1000).toFixed(0)}s`;
+    }, 500);
+  } else {
+    const el = $('loadingText');
+    if (el) el.textContent = 'Đang xử lý...';
+  }
 }
 function showError(msg) {
   const box = $('errorBox');
