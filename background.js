@@ -2,6 +2,19 @@ import { getSettings } from './js/settings.js';
 import { translateWithFallback } from './js/translate.js';
 import { chatCompletions, buildRewriteMessages } from './js/api.js';
 
+// Inject content.js + css into the active tab on demand instead of declaring
+// content_scripts on <all_urls>. activeTab (granted by the context-menu click
+// or keyboard command) gives temporary access — far narrower permission
+// surface than running code on every page the user visits.
+async function ensureContentScript(tabId) {
+  try {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ['css/content.css'] });
+  } catch (e) {
+    // Chrome injects CSS with files already; ignore double-insert errors
+  }
+  await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'translate-auto',
@@ -71,6 +84,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     else if (info.menuItemId === 'rewrite-professional') payload = await doRewrite(selected, 'professional');
     else payload = await doTranslate(selected, 'auto', 'auto');
 
+    await ensureContentScript(tab.id);
     await chrome.tabs.sendMessage(tab.id, {
       type: 'VIEN_SHOW_RESULT',
       original: selected,
@@ -92,7 +106,12 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'translate-selection') return;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
-  chrome.tabs.sendMessage(tab.id, { type: 'VIEN_TRANSLATE_SHORTCUT' });
+  try {
+    await ensureContentScript(tab.id);
+    chrome.tabs.sendMessage(tab.id, { type: 'VIEN_TRANSLATE_SHORTCUT' });
+  } catch (e) {
+    console.error('[ViEn] Cannot inject content script:', e);
+  }
 });
 
 // Timeout tổng cho cả chuỗi fallback (4 free ~8s/request + LLM 60s).
