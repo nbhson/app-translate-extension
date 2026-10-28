@@ -41,8 +41,11 @@ export async function getSettings() {
 
 // Bản nhanh, không block popup:
 // - trả cache memory nếu có
-// - đọc storage.sync nhưng race với timeout 350ms -> fallback defaults
-//   (trên Windows/máy yếu, storage.sync lần đầu có thể chậm vài giây)
+// - đọc storage đồng thời nhưng race với timeout 350ms -> fallback defaults
+//   (trên Windows/máy yếu, storage lần đầu có thể chậm vài giây)
+//
+// API key lưu ở storage.LOCAL (không sync): storage.sync được đồng bộ lên
+// tài khoản Google của user — apiKey là credential, không nên rời máy.
 let _memCache = null;
 const SETTINGS_TIMEOUT_MS = 350;
 
@@ -58,19 +61,30 @@ function withTimeout(promise, ms, fallback) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function splitApiKey(patch) {
+  const { apiKey, ...rest } = patch || {};
+  return { syncPart: rest, localPart: apiKey === undefined ? null : { apiKey } };
+}
+
 export async function getSettingsFast() {
   if (_memCache) return _memCache;
   const keys = Object.keys(DEFAULT_SETTINGS);
   try {
-    const stored = await withTimeout(storageGet(keys), SETTINGS_TIMEOUT_MS, null);
+    const [stored, local] = await withTimeout(
+      Promise.all([storageGet(keys), chrome.storage.local.get('apiKey')]),
+      SETTINGS_TIMEOUT_MS,
+      null
+    );
     if (stored == null) {
       // Hết timeout: trả defaults ngay để popup hiện tức thì,
       // đồng thời refresh ngầm để lần sau có cache.
-      _memCache = { ...DEFAULT_SETTINGS };
-      storageGet(keys).then((s) => { _memCache = { ...DEFAULT_SETTINGS, ...s }; }).catch(() => {});
+      _memCache = { ...DEFAULT_SETTINGS, apiKey: local?.apiKey || '' };
+      Promise.all([storageGet(keys), chrome.storage.local.get('apiKey')])
+        .then(([s, l]) => { _memCache = { ...DEFAULT_SETTINGS, ...s, apiKey: l?.apiKey || '' }; })
+        .catch(() => {});
       return _memCache;
     }
-    _memCache = { ...DEFAULT_SETTINGS, ...stored };
+    _memCache = { ...DEFAULT_SETTINGS, ...stored, apiKey: local?.apiKey || stored.apiKey || '' };
     return _memCache;
   } catch {
     return _memCache || { ...DEFAULT_SETTINGS };
@@ -78,7 +92,16 @@ export async function getSettingsFast() {
 }
 
 export async function saveSettings(patch) {
-  await chrome.storage.sync.set(patch);
+  const { syncPart, localPart } = splitApiKey(patch);
+  // Xóa apiKey khỏi storage.sync nếu dữ liệu cũ từng lưu ở đó (migration)
+  if (localPart) {
+    await chrome.storage.local.set(localPart);
+    await chrome.storage.sync.remove('apiKey').catch(() => {});
+  }
+  if (Object.keys(syncPart).length) {
+    await chrome.storage.sync.set(syncPart);
+  }
+  _memCache = null; // invalidate cache
 }
 
 export function detectLang(text) {

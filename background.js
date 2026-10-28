@@ -16,30 +16,34 @@ async function ensureContentScript(tabId) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'translate-auto',
-    title: 'Dịch nhanh (Tự động Vi ⇄ En)',
-    contexts: ['selection']
-  });
-  chrome.contextMenus.create({
-    id: 'translate-vi-en',
-    title: 'Dịch Việt → Anh',
-    contexts: ['selection']
-  });
-  chrome.contextMenus.create({
-    id: 'translate-en-vi',
-    title: 'Dịch Anh → Việt',
-    contexts: ['selection']
-  });
-  chrome.contextMenus.create({
-    id: 'rewrite-natural',
-    title: 'Viết lại tự nhiên',
-    contexts: ['selection']
-  });
-  chrome.contextMenus.create({
-    id: 'rewrite-professional',
-    title: 'Viết lại chuyên nghiệp',
-    contexts: ['selection']
+  // removeAll trước khi create: reload/update extension mà không clear sẽ
+  // duplicate ID → runtime.error "Cannot create item with duplicate id".
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'translate-auto',
+      title: 'Dịch nhanh (Tự động Vi ⇄ En)',
+      contexts: ['selection']
+    });
+    chrome.contextMenus.create({
+      id: 'translate-vi-en',
+      title: 'Dịch Việt → Anh',
+      contexts: ['selection']
+    });
+    chrome.contextMenus.create({
+      id: 'translate-en-vi',
+      title: 'Dịch Anh → Việt',
+      contexts: ['selection']
+    });
+    chrome.contextMenus.create({
+      id: 'rewrite-natural',
+      title: 'Viết lại tự nhiên',
+      contexts: ['selection']
+    });
+    chrome.contextMenus.create({
+      id: 'rewrite-professional',
+      title: 'Viết lại chuyên nghiệp',
+      contexts: ['selection']
+    });
   });
 });
 

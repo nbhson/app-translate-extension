@@ -81,8 +81,11 @@
     removeCard();
     const srcLang = langs?.source || '';
     const tgtLang = langs?.target || '';
-    const langTag = srcLang && tgtLang ? ` (${srcLang.toUpperCase()}→${tgtLang.toUpperCase()})` : '';
-    const viaTag = langs?.providerLabel ? ` • ${langs.providerLabel}` : '';
+    // Escape mọi thứ đưa vào innerHTML: langTag/viaTag đến từ provider trả về
+    // (không hoàn toàn tin tưởng được).
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const langTag = srcLang && tgtLang ? ` (${esc(srcLang.toUpperCase())}→${esc(tgtLang.toUpperCase())})` : '';
+    const viaTag = langs?.providerLabel ? ` • ${esc(langs.providerLabel)}` : '';
     card = document.createElement('div');
     card.className = 'vien-card';
     card.innerHTML = `
