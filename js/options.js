@@ -88,3 +88,36 @@ $('fetchModels').addEventListener('click', async () => {
 });
 
 load();
+loadDisabledSites();
+
+// --- Disabled sites management ---
+async function loadDisabledSites() {
+  const list = $('disabledSitesList');
+  const empty = $('noDisabledSites');
+  let sites = [];
+  try {
+    const { vienDisabledSites = [] } = await chrome.storage.local.get('vienDisabledSites');
+    sites = Array.isArray(vienDisabledSites) ? vienDisabledSites : [];
+  } catch {}
+  list.textContent = '';
+  empty.style.display = sites.length ? 'none' : 'block';
+  for (const site of sites) {
+    const li = document.createElement('li');
+    const name = document.createElement('code');
+    name.textContent = site;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ghost';
+    btn.textContent = '✓ Bật lại';
+    btn.addEventListener('click', async () => {
+      try {
+        const { vienDisabledSites = [] } = await chrome.storage.local.get('vienDisabledSites');
+        const next = (Array.isArray(vienDisabledSites) ? vienDisabledSites : []).filter((h) => h !== site);
+        await chrome.storage.local.set({ vienDisabledSites: next });
+      } catch {}
+      loadDisabledSites();
+    });
+    li.append(name, btn);
+    list.appendChild(li);
+  }
+}

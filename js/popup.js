@@ -19,16 +19,113 @@ const $ = (id) => document.getElementById(id);
 let lastSrc = null; // { text, lang }
 let lastDst = null; // { text, lang }
 
+function kindLabel(kind) {
+  return kind === 'rewrite' ? '✨ Viết lại' : '🌍 Dịch';
+}
+
+// --- History tab ---
+// History do background ghi (1 nơi duy nhất cho cả popup + content script);
+// popup chỉ đọc + xóa. List render bằng DOM API (textContent), không innerHTML.
+function renderHistory() {
+  const list = $('historyList');
+  if (!list) return;
+  chrome.storage.local.get('history', ({ history = [] }) => {
+    list.textContent = '';
+    if (!history.length) {
+      const empty = document.createElement('p');
+      empty.className = 'history-empty';
+      empty.textContent = 'Chưa có lịch sử. Dịch hoặc viết lại để lưu vào đây.';
+      list.appendChild(empty);
+      return;
+    }
+    for (const entry of history) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'history-item';
+
+      const head = document.createElement('div');
+      head.className = 'history-item-head';
+      head.textContent = `${kindLabel(entry.kind)} · ${new Date(entry.time || Date.now()).toLocaleString('vi-VN')}`;
+
+      const input = document.createElement('div');
+      input.className = 'history-item-text';
+      input.textContent = entry.input || '';
+
+      const output = document.createElement('div');
+      output.className = 'history-item-output';
+      output.textContent = entry.output || '';
+
+      item.append(head, input, output);
+      item.title = 'Bấm để nạp lại';
+      item.addEventListener('click', () => {
+        if (entry.kind === 'rewrite') {
+          document.querySelector('.tab[data-tab="rewrite"]')?.click();
+          $('rewriteInput').value = entry.input || '';
+        } else {
+          document.querySelector('.tab[data-tab="translate"]')?.click();
+          $('inputText').value = entry.input || '';
+        }
+        showResult(entry.output || '', kindLabel(entry.kind));
+      });
+      list.appendChild(item);
+    }
+  });
+}
+
+$('btnClearHistory').addEventListener('click', async () => {
+  if (!confirm('Xóa toàn bộ lịch sử dịch?')) return;
+  try { await chrome.storage.local.remove('history'); } catch {}
+  renderHistory();
+});
+
 const tabBtns = document.querySelectorAll('.tab');
 tabBtns.forEach((b) =>
   b.addEventListener('click', () => {
-    tabBtns.forEach((x) => x.classList.remove('active'));
+    tabBtns.forEach((x) => {
+      x.classList.remove('active');
+      x.setAttribute('aria-pressed', 'false');
+    });
     b.classList.add('active');
+    b.setAttribute('aria-pressed', 'true');
     const tab = b.dataset.tab;
-    $('tab-translate').classList.toggle('hidden', tab !== 'translate');
-    $('tab-rewrite').classList.toggle('hidden', tab !== 'rewrite');
+    ['translate', 'rewrite', 'history'].forEach((t) => {
+      $('tab-' + t).classList.toggle('hidden', tab !== t);
+    });
+    if (tab === 'history') renderHistory();
   })
 );
+
+// --- Per-site toggle: bật/tắt bong bóng dịch trên site hiện tại ---
+async function initSiteToggle() {
+  const toggle = $('siteToggle');
+  if (!toggle) return;
+  let hostname = '';
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = new URL(tab?.url || '');
+    if (!/^https?:$/.test(url.protocol) || !url.hostname) {
+      toggle.classList.add('hidden');
+      return;
+    }
+    hostname = url.hostname;
+    toggle.addEventListener('change', async () => {
+      try {
+        const { vienDisabledSites = [] } = await chrome.storage.local.get('vienDisabledSites');
+        let sites = Array.isArray(vienDisabledSites) ? vienDisabledSites : [];
+        if (toggle.checked) {
+          sites = sites.filter((h) => h !== hostname);
+        } else if (!sites.includes(hostname)) {
+          sites.push(hostname);
+        }
+        await chrome.storage.local.set({ vienDisabledSites: sites });
+      } catch {}
+    });
+    const { vienDisabledSites = [] } = await chrome.storage.local.get('vienDisabledSites');
+    toggle.checked = !(Array.isArray(vienDisabledSites) && vienDisabledSites.includes(hostname));
+  } catch {
+    toggle.classList.add('hidden');
+  }
+}
 
 function sendMsg(msg, timeoutMs = 115000) {
   return new Promise((resolve, reject) => {
@@ -128,7 +225,6 @@ $('btnTranslate').addEventListener('click', async () => {
     lastDst = { text: res.text, lang: res.target };
     const via = res.providerLabel ? ` • via ${res.providerLabel}` : '';
     showResult(res.text, `${res.source} → ${res.target}${via}`);
-    saveHistory({ kind: 'translate', input: text, output: res.text });
   } catch (e) {
     showError(e.message);
   } finally {
@@ -149,7 +245,6 @@ $('btnRewrite').addEventListener('click', async () => {
     lastDst = { text: res.text, lang };
     const label = { professional: 'Chuyên nghiệp 💼', natural: 'Tự nhiên 💬', detailed: 'Chi tiết 📝' }[mode];
     showResult(res.text, `Viết lại • ${label}`);
-    saveHistory({ kind: 'rewrite', input: text, output: res.text });
   } catch (e) {
     showError(e.message);
   } finally {
@@ -167,9 +262,13 @@ $('btnClear').addEventListener('click', () => {
 $('btnCopy').addEventListener('click', async () => {
   const t = $('resultText').textContent;
   if (!t) return;
-  await navigator.clipboard.writeText(t);
-  $('btnCopy').textContent = '✅';
-  setTimeout(() => ($('btnCopy').textContent = '📋'), 1200);
+  try {
+    await navigator.clipboard.writeText(t);
+    $('btnCopy').textContent = '✅';
+    setTimeout(() => ($('btnCopy').textContent = '📋'), 1200);
+  } catch {
+    showError('Không thể copy — trình duyệt chặn clipboard.');
+  }
 });
 
 $('btnSpeak').addEventListener('click', () => {
@@ -207,14 +306,6 @@ function openOptions() {
 $('openOptions').addEventListener('click', openOptions);
 $('footerOptions').addEventListener('click', (e) => { e.preventDefault(); openOptions(); });
 
-async function saveHistory(entry) {
-  try {
-    const { history = [] } = await chrome.storage.local.get('history');
-    history.unshift({ ...entry, time: Date.now() });
-    await chrome.storage.local.set({ history: history.slice(0, 20) });
-  } catch {}
-}
-
 // Enter (không shift) để dịch nhanh
 $('inputText').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('btnTranslate').click(); }
@@ -231,3 +322,4 @@ function scheduleStatus() {
   }
 }
 scheduleStatus();
+initSiteToggle();

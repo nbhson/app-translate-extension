@@ -6,6 +6,23 @@
   let fabBtn = null;
   let card = null;
 
+  // --- Per-site toggle: user có thể tắt bong bóng dịch trên 1 site ---
+  // Cache + storage.onChanged để bật/tắt tức thì không cần F5.
+  let siteDisabled = false;
+  const SITES_KEY = 'vienDisabledSites';
+  (async () => {
+    try {
+      const { vienDisabledSites = [] } = await chrome.storage.local.get(SITES_KEY);
+      siteDisabled = Array.isArray(vienDisabledSites) && vienDisabledSites.includes(location.hostname);
+    } catch { siteDisabled = false; }
+  })();
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area !== 'local' || !changes[SITES_KEY]) return;
+    const sites = changes[SITES_KEY].newValue;
+    siteDisabled = Array.isArray(sites) && sites.includes(location.hostname);
+    if (siteDisabled) { removeFab(); removeCard(); }
+  });
+
   function removeFab() { fabBtn?.remove(); fabBtn = null; }
   function removeCard() { card?.remove(); card = null; }
 
@@ -46,8 +63,10 @@
   }
 
   function showFab(x, y) {
+    if (siteDisabled) return;
     removeFab();
     fabBtn = document.createElement('button');
+    fabBtn.type = 'button';
     fabBtn.className = 'vien-fab';
     fabBtn.textContent = '🌐 Dịch';
     fabBtn.style.left = `${x}px`;
@@ -130,17 +149,20 @@
     let rewritten = '';
 
     const flash = (btn, okText, failText, fn) => {
+      btn.dataset.label = btn.textContent;
+      let restoreTimer = null;
       btn.onclick = async (e) => {
         const b = e.currentTarget;
+        // Clear timer cũ: bấm liên tiếp không bị flash label cũ đè lên
+        if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null; }
         try {
           await fn();
           b.textContent = okText;
         } catch {
           b.textContent = failText;
         }
-        setTimeout(() => (b.textContent = b.dataset.label), 1500);
+        restoreTimer = setTimeout(() => (b.textContent = b.dataset.label), 1500);
       };
-      btn.dataset.label = btn.textContent;
     };
 
     flash(card.querySelector('[data-act="copy"]'), '✅ Copied', '❌ Copy lỗi', async () => {

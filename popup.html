@@ -17,24 +17,25 @@
 </header>
 
 <nav class="tabs">
-  <button class="tab active" data-tab="translate">🌍 Dịch</button>
-  <button class="tab" data-tab="rewrite">✨ Viết lại</button>
+  <button class="tab active" data-tab="translate" aria-pressed="true">🌍 Dịch</button>
+  <button class="tab" data-tab="rewrite" aria-pressed="false">✨ Viết lại</button>
+  <button class="tab" data-tab="history" aria-pressed="false">🕘 Lịch sử</button>
 </nav>
 
 <main>
   <section id="tab-translate" class="tabpanel">
     <div class="row lang-row">
-      <select id="langPair">
+      <select id="langPair" aria-label="Cặp ngôn ngữ">
         <option value="auto">🔄 Tự động (Vi ⇄ En)</option>
         <option value="vi-en">Việt → Anh</option>
         <option value="en-vi">Anh → Việt</option>
       </select>
-      <button id="swapLang" title="Đảo chiều">⇄</button>
+      <button id="swapLang" title="Đảo chiều" aria-label="Đảo chiều ngôn ngữ">⇄</button>
     </div>
-    <textarea id="inputText" rows="5" placeholder="Nhập hoặc dán văn bản Việt / Anh cần dịch..."></textarea>
+    <textarea id="inputText" rows="5" aria-label="Văn bản cần dịch" placeholder="Nhập hoặc dán văn bản Việt / Anh cần dịch..."></textarea>
     <div class="row actions">
       <button id="btnTranslate" class="primary">Dịch</button>
-      <button id="btnSpeakInput" class="ghost" title="Đọc văn bản gốc">🔊</button>
+      <button id="btnSpeakInput" class="ghost" title="Đọc văn bản gốc" aria-label="Đọc văn bản gốc">🔊</button>
       <button id="btnClear" class="ghost">Xóa</button>
     </div>
   </section>
@@ -51,10 +52,18 @@
         <span class="mode-icon">📝</span><span class="mode-label">Chi tiết</span>
         <small>Mở rộng, rõ ý</small></label>
     </div>
-    <textarea id="rewriteInput" rows="4" placeholder="Nhập câu cần viết lại bằng AI..."></textarea>
+    <textarea id="rewriteInput" rows="4" aria-label="Văn bản cần viết lại" placeholder="Nhập câu cần viết lại bằng AI..."></textarea>
     <div class="row actions">
       <button id="btnRewrite" class="primary">Viết lại</button>
     </div>
+  </section>
+
+  <section id="tab-history" class="tabpanel hidden">
+    <div class="history-head">
+      <strong>Lịch sử dịch</strong>
+      <button id="btnClearHistory" class="ghost danger" title="Xóa toàn bộ lịch sử">🗑️ Xóa hết</button>
+    </div>
+    <div id="historyList" class="history-list" aria-live="polite"></div>
   </section>
 
   <section id="resultBox" class="hidden">
@@ -73,6 +82,11 @@
   <div id="errorBox" class="hidden"></div>
   <div id="loading" class="hidden"><span class="spinner"></span> <span id="loadingText">Đang xử lý...</span></div>
 </main>
+
+<div class="site-toggle" title="Tắt/bật bong bóng dịch trên trang hiện tại">
+  <input type="checkbox" id="siteToggle" />
+  <label for="siteToggle">🌐 Bong bóng dịch trên site này</label>
+</div>
 
 <footer>
   <span>ViEn Translate • Viết lại bằng AI</span>

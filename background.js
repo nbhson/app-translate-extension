@@ -99,6 +99,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       providerLabel: payload.providerLabel,
       kind: info.menuItemId.startsWith('rewrite') ? 'rewrite' : 'translate'
     });
+    // Context menu đi ngoài message hub → ghi history tại đây
+    await saveHistory(info.menuItemId.startsWith('rewrite') ? 'rewrite' : 'translate', selected, payload.text);
   } catch (e) {
     try {
       await chrome.tabs.sendMessage(tab.id, { type: 'VIEN_SHOW_RESULT', original: selected, result: '❌ ' + e.message, error: true });
@@ -133,6 +135,22 @@ function withOverallTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// --- History: 1 nơi ghi duy nhất (popup + content script + context menu
+// đều đi qua message hub này). Giữ tối đa 50 entry, dedupe liên tiếp.
+const HISTORY_KEY = 'history';
+const HISTORY_MAX = 50;
+async function saveHistory(kind, input, output) {
+  try {
+    const { history = [] } = await chrome.storage.local.get(HISTORY_KEY);
+    const list = Array.isArray(history) ? history : [];
+    const entry = { kind, input: String(input || '').slice(0, 2000), output: (output || '').slice(0, 4000), time: Date.now() };
+    // Bỏ qua nếu entry gần nhất giống hệt (tránh spam khi user bấm lại)
+    if (list[0] && list[0].input === entry.input && list[0].output === entry.output && list[0].kind === entry.kind) return;
+    list.unshift(entry);
+    await chrome.storage.local.set({ [HISTORY_KEY]: list.slice(0, HISTORY_MAX) });
+  } catch { /* history là nice-to-have — không bao giờ làm lỗi translate */ }
+}
+
 // Central message hub: popup + content script call background to avoid CORS
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
@@ -142,6 +160,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         OVERALL_TIMEOUT_MS,
         'Dịch'
       );
+      await saveHistory('translate', msg.text, r.text);
       sendResponse({ ok: true, ...r });
     } else if (msg?.type === 'REWRITE') {
       const r = await withOverallTimeout(
@@ -149,6 +168,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         OVERALL_TIMEOUT_MS,
         'Viết lại'
       );
+      await saveHistory('rewrite', msg.text, r.text);
       sendResponse({ ok: true, ...r });
     } else if (msg?.type === 'GET_SETTINGS') {
       sendResponse({ ok: true, settings: await getSettings() });

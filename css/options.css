@@ -20,3 +20,18 @@ button#btnTest, button.ghost { background: #fff; border: 1px solid #d1d5db; bord
 details { margin-top: 16px; font-size: 13px; color: #374151; }
 details ul { padding-left: 18px; }
 details li { margin: 4px 0; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+.site-list { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.site-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; }
+.site-list button { border: 1px solid #d1d5db; background: #fff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+.site-list button:hover { background: #ecfdf5; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  body { background: #0b0e14; color: #e5e7eb; }
+  .card { background: #161b25; border-color: #2a3140; }
+  .subtitle { color: #94a3b8; }
+  .subtitle code, details code { background: #1e2635; }
+  input, select { background: #10141c; color: #e5e7eb; border-color: #374151; }
+  .key-row button, button#btnTest, button.ghost, .site-list button { background: #1e2635; color: #e5e7eb; border-color: #374151; }
+  .site-list li { background: #1a1f2b; border-color: #2a3140; }
+}
