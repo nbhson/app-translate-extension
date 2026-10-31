@@ -1,5 +1,7 @@
 # ViEn Translate + AI Rewrite 🌐
 
+[![CI](https://github.com/nbhson/app-translate-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/nbhson/app-translate-extension/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-blue.svg)](https://developer.chrome.com/docs/extensions/)
 [![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI%20Compatible-orange.svg)](https://platform.openai.com/docs/api-reference/chat)
