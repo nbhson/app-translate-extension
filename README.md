@@ -113,18 +113,21 @@ icons/                        # icon16/48/128
 
 | Quyền | Vì sao cần |
 |-------|------------|
-| `storage` | Lưu BaseURL / Key / Model cho Rewrite + fallback Dịch LLM + lịch sử |
+| `storage` | Lưu BaseURL / Key / Model cho Rewrite + fallback Dịch LLM + lịch sử (`chrome.storage.sync` + `chrome.storage.local`) |
 | `contextMenus` | Menu chuột phải dịch nhanh |
-| `scripting`, `activeTab` | Lấy text vùng chọn, phím tắt |
-| `<all_urls>` | Content-script bong bóng dịch mọi trang |
+| `scripting`, `activeTab` | Inject bong bóng dịch + lấy text vùng chọn, phím tắt `Alt+T` |
+| `host_permissions` | Gọi các nguồn dịch miễn phí: `translate.googleapis.com`, `api.mymemory.translated.net`, `translate.argosopentech.com`, `lingva.ml`, `lingva.thedaviddelta.com` |
 
-API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình. Chức năng Dịch dùng các nguồn miễn phí trước, chỉ gọi AI khi tất cả nguồn miễn phí đều lỗi.
+Extension **không** yêu cầu `<all_urls>` hay quyền đọc dữ liệu trang trên mọi website; API Key chỉ lưu trong `chrome.storage.local` trên máy bạn, không gửi đi đâu ngoài Base URL bạn cấu hình. Chức năng Dịch dùng các nguồn miễn phí trước, chỉ gọi AI khi tất cả nguồn miễn phí đều lỗi.
 
 ---
 
 ## 🧪 Test
 
 ```bash
+# Chạy toàn bộ test (smoke + unit + fallback chain)
+node --test
+
 # Test chuỗi fallback (không cần mạng, dùng mock fetch)
 node --test tests/translate.fallback.test.mjs
 ```

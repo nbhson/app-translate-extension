@@ -100,8 +100,8 @@
     removeCard();
     const srcLang = langs?.source || '';
     const tgtLang = langs?.target || '';
-    // Escape mọi thứ đưa vào innerHTML: langTag/viaTag đến từ provider trả về
-    // (không hoàn toàn tin tưởng được).
+    // Escape mọi thứ đưa vào innerHTML: srcLang/tgtLang/langTag/viaTag đến từ
+    // provider trả về (không hoàn toàn tin tưởng được).
     const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const langTag = srcLang && tgtLang ? ` (${esc(srcLang.toUpperCase())}→${esc(tgtLang.toUpperCase())})` : '';
     const viaTag = langs?.providerLabel ? ` • ${esc(langs.providerLabel)}` : '';
@@ -109,13 +109,13 @@
     card.className = 'vien-card';
     card.innerHTML = `
       <div class="vien-card-head"><strong>${isError ? '❌ Lỗi' : '🌐 ViEn Translate' + langTag + viaTag}</strong><button type="button" class="vien-close">✕</button></div>
-      <div class="vien-label">📝 Gốc${srcLang ? ' (' + srcLang.toUpperCase() + ')' : ''}</div>
+      <div class="vien-label">📝 Gốc${srcLang ? ' (' + esc(srcLang.toUpperCase()) + ')' : ''}</div>
       <div class="vien-orig"></div>
       <div class="vien-actions">
         <button type="button" data-act="copy-orig">📋 Copy gốc</button>
         <button type="button" data-act="speak-orig">🔊 Đọc gốc</button>
       </div>
-      <div class="vien-label">🌍 Bản dịch${tgtLang ? ' (' + tgtLang.toUpperCase() + ')' : ''}</div>
+      <div class="vien-label">🌍 Bản dịch${tgtLang ? ' (' + esc(tgtLang.toUpperCase()) + ')' : ''}</div>
       <div class="vien-result"></div>
       <div class="vien-actions">
         <button type="button" data-act="copy">📋 Copy dịch</button>
